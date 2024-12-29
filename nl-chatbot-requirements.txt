@@ -1,0 +1,9 @@
+langchain-core
+langchain-openai
+langchain-community
+langchain-huggingface
+tf-keras
+openai==1.58.1
+chromadb
+sentence-transformers
+langchain-ollama
