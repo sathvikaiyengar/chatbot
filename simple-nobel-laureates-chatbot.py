@@ -1,60 +1,20 @@
-############################################################################################################
-# The purpose of this simple chatbot is to simulate a QuizBot that quizzes users on Nobel Laureates.
-# It demonstrates an "inverse chat pattern" in which the chatbot asks the user questions and expects  
-# the user to answer from a predefined set of answers. This pattern can be useful in implementing user interfaces
-# in which users interact with applications or data in a natural language-based conversational manner but are
-# guided to provide specific types of responses. This ensures that that the interaction between the user and the
-# chatbot is controlled and predictable, making it easier to manage the conversation flow and provide relevant
-# information or assistance to the user.
-#
-# The chatbot uses a small dataset of Nobel Prize winners to ask the user questions about Nobel Prize 
-# winners and provides hints if the user gets stuck.
-# The chatbot provides the user with 3 chances to answer each question and congratulates the user if 
-# they answer correctly.
-
-# This simple chatbot uses the OpenAI API to generate a quiz based on a small subset of Nobel Prizewinners 
-# data and to process user responses. It can be extended to handle a larger dataset of Nobel Prize winners and 
-# provide more complex interactions with the user by converting it to use a RAG or an agentic RAG model based 
-# on a vectorized dataset of Nobel Prize winners.
-
-# To use the chatbot, run as a Panel app from the command line (in Windows) or terminal (in Mac or Linux).
+# Python backend for QuizBot 
+# Usage Instructions:
 # 1. Set the OPENAI_API_KEY environment variable to your OpenAI API key using the following or similar syntax:
-#   >export OPENAI_API_KEY="your-api-key"
+#       export OPENAI_API_KEY="your-api-key"
 # 2. Run the code using the following command:
-#    >panel serve simple-nobel-laureates-chatbot.py --port 8080 --dev
-# 3. Open the browser and type the following URL to interact with the chatbot:
-#    http://localhost:8080/simple-nobel-laureates-chatbot
+#       python simple-nobel-laureates-chatbot.py --port 8080
 
-# Notes:
-# 1. This chatbot uses an older version of the OpenAI API and it is necessary to install it using the command:
-#    >pip install openai==0.28.0
-# 2. It also needs the following libraries to be installed:
-#    >pip install panel==1.5.4
-# 3. The chatbot does not use a RAG model or an agentic RAG model to generate responses. It uses a simple GPT-3.5 
-#    model. Hence it may hallucinate or provide incorrect information in some cases.
-#
-#
-# Effect of temperature on the model's responses:
-# -----------------------------------------------
-# The temperature parameter controls the randomness of the model's responses. A temperature of 0 results in the most likely response,
-# while higher temperatures result in more random responses. The following experiments were carried out with various temperature
-# settings:
-# 1. Temperature = 0: This setting corresponds to the most deterministic responses from the model and it resulted in very terse
-# responses from the model. Specifically, the hints provided were abstract and not that helpful. Also, the model kept repeating
-# the same hints since it was deterministic, and this would not be helpful to the user.
-# 2. Temperature = 0.5: This setting made the model's responses more creative and less deterministic. Diverse hints were provided were more
-# specific and helpful to the user. However, the model abandoned the quiz format and started making "out-of-band" conversations like 
-# "That is incorrect. Would you like a hint or would you like to try again?" instead of showing the quiz menu. 
-# 3. Temperature = 1: This setting made the models responses more creative (as compared with temparature = 0). The model provided
-# more detailed hints and responses to the user's prompts. 
 ############################################################################################################
 
 import openai
-import panel as pn #library for creating interactive dashboards
 import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-# First, we set the OpenAI API key. This key is necessary to authenticate requests to OpenAI's servers.
-openai.api_key = os.getenv("OPENAI_API_KEY")
+app = Flask(__name__)
+CORS(app)
+
 
 def check_open_ai_key():
     if "OPENAI_API_KEY" in os.environ:
@@ -65,52 +25,25 @@ def check_open_ai_key():
         print(">export OPENAI_API_KEY=\"your-api-key\"")
         exit()
 
-# This function calls the OpenAI API to generate a response to a user's prompt.
-# It simulates a chat by passing a message with the role "user" and the user's content.
-def get_completion(prompt, model="gpt-3.5-turbo"):
-    messages = [{"role": "user", "content": prompt}]
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        temperature=0.1,  # Low temperature results in more deterministic and less random responses
-    )
-    return response.choices[0].message["content"]
 
-# This function is similar to get_completion but takes a list of messages for the conversation history.
-# It's useful for maintaining context in a conversation.
 def get_completion_from_messages(messages, model="gpt-3.5-turbo", temperature=0):
     response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
-        temperature=temperature,  # A temperature of 0 results in the most likely response
+        temperature=temperature,  
     )
     return response.choices[0].message["content"]
 
-# Initialize the Panel library for building GUI applications.
-pn.extension()
+@app.route('/quiz', methods=['POST'])
+def quiz():
+    data = request.json
+    prompt = data.get('prompt', '')
+    context.append({'role': 'user', 'content': prompt})
+    model = "gpt-3.5-turbo"
+    response = get_completion_from_messages(context, model, 0.5)
+    context.append({'role': 'assistant', 'content': response})
+    return jsonify({'response': response})
 
-# This list will collect the display components for the conversation.
-panels = []
-
-# This function collects messages from the user input, gets responses from the model, and updates the display.
-def collect_messages(_):
-    prompt = inp.value  # Extract the value the user has entered into the input field.
-    inp.value = ''  # Clear the input field for the next message.
-    context.append({'role': 'user', 'content': prompt})  # Append the user's message to the context.
-    model="gpt-3.5-turbo"
-    # response = get_completion_from_messages(context,model,1)  # Get a response from the model based on the conversation context.
-    response = get_completion_from_messages(context,model,0.5)  # Get a response from the model based on the conversation context.
-    context.append({'role': 'assistant', 'content': response})  # Append the response to the context.
-
-    # Add the user's message and the chatbot's response to the panels list for display.
-    panels.append(pn.Row('User:', pn.pane.Markdown(prompt, width=600)))
-    panels.append(pn.Row('Assistant:', pn.pane.Markdown(response, width=600, styles={'background-color': '#F6F6F6'})))
-
-    # Return a column of panels to display the conversation.
-    return pn.Column(*panels)
-
-# This context variable is a list of messages that gives the chatbot initial information about its role and the data it can use.
-# Your chatbot's script and concert data here.
 context = [{'role': 'system', 'content': """
 You are QuizBot, a quiz loving chatbot that knows all triva about nobel prize winners.\
 You first greet the user by saying "Are you ready to get quizzed! I am QuizBot and I'm here to quiz you on Nobel Prize winners. You get \
@@ -287,23 +220,6 @@ nobel_prize_data = {
     ],
 }"""}]
 
-# Define the button for starting the conversation
-button_conversation = pn.widgets.Button(name="Answer!")
-
-# Set up the user interface for the chatbot.
-# TextInput is where the user will type their messages.
-inp = pn.widgets.TextInput(value="Quiz On", placeholder='Enter text here…')
-
-# Binding the collect_messages function to be called when the button is clicked.
-interactive_conversation = pn.bind(collect_messages, button_conversation)
-# The dashboard puts together the input, button, and conversation display.
-dashboard = pn.Column(
-    inp,
-    pn.Row(button_conversation),
-    pn.panel(interactive_conversation, loading_indicator=True, height=300),
-)
-
-check_open_ai_key()
-dashboard.servable()
-#Run the code using: panel serve simple-nobel-laureates-chatbot.py --port 8080 --dev
-#Open the browser and type: http://localhost:8080/simple-nobel-laureates-chatbot 
+if __name__ == '__main__':
+    check_open_ai_key()
+    app.run(host='0.0.0.0', port=8080)

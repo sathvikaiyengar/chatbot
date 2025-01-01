@@ -7,3 +7,4 @@ openai==1.58.1
 chromadb
 sentence-transformers
 langchain-ollama
+flask
