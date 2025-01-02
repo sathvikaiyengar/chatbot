@@ -1,0 +1,1 @@
+This is a small quiz chatbot, QuizBot, designed for quizzing users on Nobel Prize Winner trivia. It utilizes OpenAI's API and a small dataset on Nobel Prize winners. In this respository are the source code and sample demo video. 
