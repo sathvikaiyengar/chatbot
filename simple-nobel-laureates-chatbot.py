@@ -30,7 +30,8 @@ def get_completion_from_messages(messages, model="gpt-3.5-turbo", temperature=0)
     response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
-        temperature=temperature,  
+        temperature=temperature,  # temperature controls the randomness of the model's responses (0 = most deterministic, 
+                                  # 0.5 = more creative, less deterministic, 1 = maximum creativity)
     )
     return response.choices[0].message["content"]
 
